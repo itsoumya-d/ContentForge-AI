@@ -44,10 +44,8 @@ interface DashboardLayoutProps {
     };
 }
 
-export function DashboardLayout({ children, user }: DashboardLayoutProps) {
-    const pathname = usePathname();
-
-    const SidebarContent = () => (
+function SidebarContent({ pathname }: { pathname: string }) {
+    return (
         <div className="flex h-full flex-col">
             {/* Logo */}
             <div className="flex h-16 items-center border-b border-border/40 px-6">
@@ -99,12 +97,16 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
             </div>
         </div>
     );
+}
+
+export function DashboardLayout({ children, user }: DashboardLayoutProps) {
+    const pathname = usePathname();
 
     return (
         <div className="flex min-h-screen">
             {/* Desktop Sidebar */}
             <aside className="hidden w-64 border-r border-border/40 bg-card/50 lg:block">
-                <SidebarContent />
+                <SidebarContent pathname={pathname} />
             </aside>
 
             {/* Main Content */}
@@ -119,7 +121,7 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
                             </Button>
                         </SheetTrigger>
                         <SheetContent side="left" className="w-64 p-0">
-                            <SidebarContent />
+                            <SidebarContent pathname={pathname} />
                         </SheetContent>
                     </Sheet>
 

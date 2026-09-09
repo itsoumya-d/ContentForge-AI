@@ -16,9 +16,9 @@ export default async function DashboardRootLayout({
     return (
         <DashboardLayout
             user={{
-                name: (session as any).name || (session as any).email?.split("@")[0],
-                email: (session as any).email,
-                avatarUrl: (session as any).picture,
+                name: session.name || session.email?.split("@")[0],
+                email: session.email,
+                avatarUrl: session.picture,
             }}
         >
             {children}

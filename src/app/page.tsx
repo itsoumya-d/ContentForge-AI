@@ -127,7 +127,7 @@ export default function HomePage() {
                 </h1>
 
                 <p className="text-lg md:text-xl text-zinc-600 dark:text-zinc-400 leading-relaxed max-w-2xl mx-auto lg:mx-0">
-                  Stop settling for simple summaries. ContentForge leverages Gemini's 2M context window to analyze,
+                  Stop settling for simple summaries. ContentForge leverages Gemini&apos;s 2M context window to analyze,
                   repurpose, and intelligently search through your entire knowledge base in seconds.
                 </p>
 
@@ -202,7 +202,7 @@ export default function HomePage() {
                             <div className="h-full w-[85%] bg-indigo-600 rounded-full" />
                           </div>
                           <p className="text-zinc-600 dark:text-zinc-300 leading-relaxed">
-                            I've processed the 128-page report. Key findings: 12% revenue growth, efficiency gains in Phase 2...
+                            I&apos;ve processed the 128-page report. Key findings: 12% revenue growth, efficiency gains in Phase 2...
                           </p>
                           <div className="flex gap-2">
                             <Badge variant="outline" className="text-[10px] py-0">LinkedIn v1</Badge>
@@ -336,7 +336,7 @@ export default function HomePage() {
                     viewport={{ once: true }}
                     className="p-6 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm space-y-4 hover:shadow-md transition-shadow"
                   >
-                    <p className="text-zinc-600 dark:text-zinc-300 italic">"{t.quote}"</p>
+                    <p className="text-zinc-600 dark:text-zinc-300 italic">&quot;{t.quote}&quot;</p>
                     <div className="flex items-center gap-4">
                       <img src={t.avatar} alt={t.author} className="h-10 w-10 rounded-full border border-zinc-100 dark:border-zinc-800" />
                       <div>
@@ -498,7 +498,7 @@ export default function HomePage() {
               Build Your Content <br className="hidden md:block" /> Future Today.
             </h2>
             <p className="text-xl text-indigo-100/90 leading-relaxed max-w-2xl mx-auto">
-              Don't get left behind in the manual content era. Scale your intelligence with the speed of Gemini.
+              Don&apos;t get left behind in the manual content era. Scale your intelligence with the speed of Gemini.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-6 pt-4">
               <Button size="lg" asChild className="h-16 px-12 text-xl bg-white text-indigo-600 hover:bg-zinc-100 shadow-2xl transition-all hover:scale-105 active:scale-95">

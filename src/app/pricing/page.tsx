@@ -4,7 +4,18 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Badge } from "@/components/ui/badge";
 import { CheckoutButton } from "@/components/pricing/checkout-button";
 
-const tiers = [
+type PricingTier = {
+    name: string;
+    price: string;
+    priceId: string | undefined;
+    description: string;
+    features: string[];
+    buttonText: string;
+    buttonVariant: "outline" | "default" | "indigo";
+    popular?: boolean;
+};
+
+const tiers: PricingTier[] = [
     {
         name: "Free",
         price: "$0",
@@ -17,7 +28,7 @@ const tiers = [
             "Standard support",
         ],
         buttonText: "Current Plan",
-        buttonVariant: "outline" as const,
+        buttonVariant: "outline",
     },
     {
         name: "Starter",
@@ -32,7 +43,7 @@ const tiers = [
             "Email support",
         ],
         buttonText: "Upgrade to Starter",
-        buttonVariant: "default" as const,
+        buttonVariant: "default",
         popular: true,
     },
     {
@@ -49,7 +60,7 @@ const tiers = [
             "Early access to new features",
         ],
         buttonText: "Go Pro",
-        buttonVariant: "indigo" as any,
+        buttonVariant: "indigo",
     },
 ];
 

@@ -1,7 +1,7 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
-import { getStorage } from "firebase/storage";
+import { getAuth, type Auth } from "firebase/auth";
+import { getFirestore, type Firestore } from "firebase/firestore";
+import { getStorage, type FirebaseStorage } from "firebase/storage";
 
 const firebaseConfig = {
     apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -21,8 +21,8 @@ const app = (getApps().length > 0)
     : (isConfigValid ? initializeApp(firebaseConfig) : null);
 
 // Initialize services with null-safety for build-time
-export const auth = app ? getAuth(app) : (null as any);
-export const db = app ? getFirestore(app) : (null as any);
-export const storage = app ? getStorage(app) : (null as any);
+export const auth = app ? getAuth(app) : (null as unknown as Auth);
+export const db = app ? getFirestore(app) : (null as unknown as Firestore);
+export const storage = app ? getStorage(app) : (null as unknown as FirebaseStorage);
 
 export { app };
