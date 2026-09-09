@@ -16,16 +16,14 @@ import { toast } from "sonner";
 export default function SignupPage() {
     const [state, formAction, isPending] = useActionState(signup, null);
     const [isOAuthLoading, setIsOAuthLoading] = useState<"google" | "github" | null>(null);
-    const [showSuccess, setShowSuccess] = useState(false);
 
     useEffect(() => {
         if (state?.error) {
             toast.error(state.error);
         }
-        if (state?.success) {
-            setShowSuccess(true);
-        }
     }, [state]);
+
+    const showSuccess = state?.success === true;
 
     const handleGoogleSignIn = async () => {
         setIsOAuthLoading("google");
@@ -34,8 +32,8 @@ export default function SignupPage() {
             const result = await signInWithPopup(clientAuth, provider);
             const idToken = await result.user.getIdToken();
             await handleOAuthSignIn(idToken);
-        } catch (error: any) {
-            toast.error(error.message || "Failed to sign in with Google");
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : "Failed to sign in with Google");
             setIsOAuthLoading(null);
         }
     };
@@ -47,8 +45,8 @@ export default function SignupPage() {
             const result = await signInWithPopup(clientAuth, provider);
             const idToken = await result.user.getIdToken();
             await handleOAuthSignIn(idToken);
-        } catch (error: any) {
-            toast.error(error.message || "Failed to sign in with GitHub");
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : "Failed to sign in with GitHub");
             setIsOAuthLoading(null);
         }
     };

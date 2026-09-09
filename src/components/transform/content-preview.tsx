@@ -20,22 +20,22 @@ const PLATFORM_LIMITS = {
     instagram: 2200
 };
 
+function CharacterCounter({ current, limit, label }: { current: number; limit: number; label: string }) {
+    const isOver = current > limit;
+    return (
+        <div className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${isOver ? "bg-red-500/10 text-red-500 border-red-500/20" : "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
+            }`}>
+            {label}: {current} / {limit}
+        </div>
+    );
+}
+
 export function ContentPreview({ twitter, linkedin, instagram }: ContentPreviewProps) {
     const [activeTab, setActiveTab] = useState("all");
 
     const copyToClipboard = (text: string) => {
         navigator.clipboard.writeText(text);
         toast.success("Copied to clipboard!");
-    };
-
-    const CharacterCounter = ({ current, limit, label }: { current: number, limit: number, label: string }) => {
-        const isOver = current > limit;
-        return (
-            <div className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${isOver ? "bg-red-500/10 text-red-500 border-red-500/20" : "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
-                }`}>
-                {label}: {current} / {limit}
-            </div>
-        );
     };
 
     if (!twitter && !linkedin && !instagram) return null;

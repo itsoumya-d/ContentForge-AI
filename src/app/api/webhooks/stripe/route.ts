@@ -5,6 +5,15 @@ import Stripe from "stripe";
 
 const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
+interface SubscriptionFields {
+    customer: string;
+    status: string;
+    current_period_end: number;
+    items?: {
+        data: Array<{ plan?: { nickname?: string | null } | null }>;
+    };
+}
+
 export async function POST(req: Request) {
     const body = await req.text();
     const signature = req.headers.get("stripe-signature");
@@ -16,9 +25,10 @@ export async function POST(req: Request) {
             throw new Error("Missing stripe signature or endpoint secret");
         }
         event = stripe.webhooks.constructEvent(body, signature, endpointSecret);
-    } catch (err: any) {
-        console.error(`Webhook Error: ${err.message}`);
-        return new NextResponse(`Webhook Error: ${err.message}`, { status: 400 });
+    } catch (err) {
+        const message = err instanceof Error ? err.message : "Unknown error";
+        console.error(`Webhook Error: ${message}`);
+        return new NextResponse(`Webhook Error: ${message}`, { status: 400 });
     }
 
     const db = getAdminDb();
@@ -35,8 +45,10 @@ export async function POST(req: Request) {
             const customerId = session.customer as string;
 
             if (userId && subscriptionId) {
-                // Cast to any to access properties that might have changed in latest SDK
-                const subscription = (await stripe.subscriptions.retrieve(subscriptionId)) as any;
+                // Fields changed across Stripe API versions, so map the ones we use explicitly.
+                const subscription = (await stripe.subscriptions.retrieve(
+                    subscriptionId
+                )) as unknown as SubscriptionFields;
 
                 await db.collection("users").doc(userId).update({
                     stripeCustomerId: customerId,
@@ -52,8 +64,8 @@ export async function POST(req: Request) {
 
         case "customer.subscription.updated":
         case "customer.subscription.deleted": {
-            const subscription = event.data.object as any;
-            const customerId = subscription.customer as string;
+            const subscription = event.data.object as unknown as SubscriptionFields;
+            const customerId = subscription.customer;
 
             // Find user by customerId
             const userQuery = await db.collection("users").where("stripeCustomerId", "==", customerId).limit(1).get();

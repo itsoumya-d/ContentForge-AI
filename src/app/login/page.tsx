@@ -40,9 +40,9 @@ function LoginForm() {
             const result = await signInWithPopup(clientAuth, provider);
             const idToken = await result.user.getIdToken();
             await handleOAuthSignIn(idToken);
-        } catch (error: any) {
+        } catch (error) {
             console.error("Google sign in error:", error);
-            toast.error(error.message || "Failed to sign in with Google");
+            toast.error(error instanceof Error ? error.message : "Failed to sign in with Google");
             setIsOAuthLoading(null);
         }
     };
@@ -54,9 +54,9 @@ function LoginForm() {
             const result = await signInWithPopup(clientAuth, provider);
             const idToken = await result.user.getIdToken();
             await handleOAuthSignIn(idToken);
-        } catch (error: any) {
+        } catch (error) {
             console.error("GitHub sign in error:", error);
-            toast.error(error.message || "Failed to sign in with GitHub");
+            toast.error(error instanceof Error ? error.message : "Failed to sign in with GitHub");
             setIsOAuthLoading(null);
         }
     };

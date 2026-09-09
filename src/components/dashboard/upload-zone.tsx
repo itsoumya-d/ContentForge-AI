@@ -131,10 +131,10 @@ export function UploadZone() {
                                 return next;
                             });
                             resolve();
-                        } catch (err: any) {
+                        } catch (err) {
                             setFiles((prev) => {
                                 const next = [...prev];
-                                next[index] = { ...next[index], status: "error", error: err.message };
+                                next[index] = { ...next[index], status: "error", error: err instanceof Error ? err.message : "Upload failed" };
                                 return next;
                             });
                             reject(err);

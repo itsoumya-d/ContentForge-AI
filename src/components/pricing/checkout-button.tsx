@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useTransition, type ComponentProps } from "react";
 import { Button } from "@/components/ui/button";
 import { createCheckoutSession } from "@/lib/actions/payments";
 import { Loader2 } from "lucide-react";
@@ -9,7 +9,7 @@ import { toast } from "sonner";
 interface CheckoutButtonProps {
     priceId: string | undefined;
     text: string;
-    variant?: any;
+    variant?: ComponentProps<typeof Button>["variant"];
     className?: string;
 }
 

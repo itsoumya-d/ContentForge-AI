@@ -1,9 +1,9 @@
-import { GoogleGenerativeAI, Content, Part } from "@google/generative-ai";
+import { GoogleGenerativeAI, Content, Part, type GenerativeModel } from "@google/generative-ai";
 
 const API_KEY = process.env.GEMINI_API_KEY;
 
 let genAI: GoogleGenerativeAI | null = null;
-let model: any = null;
+let model: GenerativeModel | null = null;
 
 if (API_KEY) {
     genAI = new GoogleGenerativeAI(API_KEY);

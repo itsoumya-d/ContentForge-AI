@@ -16,7 +16,7 @@ export default async function DashboardPage() {
             <div className="flex flex-col gap-1">
                 <h1 className="text-3xl font-bold tracking-tight">Welcome back!</h1>
                 <p className="text-muted-foreground">
-                    You're currently on the <span className="text-indigo-600 font-semibold">{subscription.plan} plan</span>.
+                    You&apos;re currently on the <span className="text-indigo-600 font-semibold">{subscription.plan} plan</span>.
                 </p>
             </div>
 

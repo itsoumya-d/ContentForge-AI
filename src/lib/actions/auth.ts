@@ -40,9 +40,9 @@ export async function login(
 
         const idToken = await userCredential.user.getIdToken();
         await createSession(idToken);
-    } catch (error: any) {
+    } catch (error) {
         return {
-            error: error.message || "Failed to sign in",
+            error: error instanceof Error ? error.message : "Failed to sign in",
         };
     }
 
@@ -84,9 +84,9 @@ export async function signup(
         return {
             success: true,
         };
-    } catch (error: any) {
+    } catch (error) {
         return {
-            error: error.message || "Failed to create account",
+            error: error instanceof Error ? error.message : "Failed to create account",
         };
     }
 }
