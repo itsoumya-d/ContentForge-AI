@@ -34,3 +34,33 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Chat reliability checks
+
+Use Node.js 22 or 24, then run:
+
+```bash
+npm ci
+npm test
+npm run lint
+npm run build
+```
+
+The regression suite uses local byte streams and mocked persistence/provider
+boundaries. It does not require Firebase credentials, a Gemini API key, network
+requests, or paid model calls. CI runs these tests before the existing lint and
+build checks on both supported Node versions.
+
+The chat tests cover UTF-8 characters split across chunks, missing/empty bodies,
+HTTP and mid-stream failures, same-tick repeated submits, stop/retry, unmount and
+chat changes, and retrying a failed save without regenerating a reply. The API
+adapter forwards cancellation to the provider and surfaces failures as stream
+errors. Partial replies remain visibly marked as incomplete and are not saved
+as completed answers or reused in later model history within the current chat.
+
+These are component and boundary regression tests, not live-provider or full
+browser end-to-end tests. Firestore writes already in flight cannot be cancelled;
+a failed write with an uncertain server outcome is not an exactly-once guarantee.
+
+Stopping a response aborts the client-side SDK request. It does not guarantee
+that the model service stops processing or that provider usage charges stop.
