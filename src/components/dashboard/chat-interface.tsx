@@ -6,7 +6,6 @@ import {
     Bot,
     User,
     Loader2,
-    Trash2,
     Maximize2,
     Minimize2,
     Sparkles,
@@ -19,7 +18,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { motion, AnimatePresence } from "framer-motion";
-import { saveMessage, getChatHistory, Message } from "@/lib/actions/chat";
+import { saveMessage, Message } from "@/lib/actions/chat";
+import { readTextStream } from "@/lib/chat/read-text-stream";
 
 interface ChatInterfaceProps {
     documentId: string;
@@ -50,18 +50,44 @@ const CopyButton = ({ content }: { content: string }) => {
     );
 };
 
-export function ChatInterface({
+type ChatMessage = Message & { incomplete?: boolean };
+
+type PendingTurn = {
+    user: Message;
+    assistantId: string;
+    history: Message[];
+    userSaved: boolean;
+    completedText?: string;
+};
+
+export function ChatInterface(props: ChatInterfaceProps) {
+    // A new document/chat must not inherit messages or an in-flight request.
+    return <ChatSession key={`${props.documentId}:${props.chatId}`} {...props} />;
+}
+
+function ChatSession({
     documentId,
     chatId,
     initialMessages = [],
     context,
     className
 }: ChatInterfaceProps) {
-    const [messages, setMessages] = useState<Message[]>(initialMessages);
+    const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
     const [input, setInput] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const [isMinimized, setIsMinimized] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
+    const requestRef = useRef<AbortController | null>(null);
+    const pendingTurnRef = useRef<PendingTurn | null>(null);
+    const excludedHistoryIds = useRef(new Set<string>());
+    const [error, setError] = useState<string | null>(null);
+    const [isStreaming, setIsStreaming] = useState(false);
+
+    useEffect(() => () => {
+        const request = requestRef.current;
+        requestRef.current = null;
+        request?.abort();
+    }, []);
 
     useEffect(() => {
         if (scrollRef.current) {
@@ -69,75 +95,102 @@ export function ChatInterface({
         }
     }, [messages]);
 
-    const handleSend = async (e?: React.FormEvent) => {
-        e?.preventDefault();
-        if (!input.trim() || isLoading) return;
-
-        const userMessage = input.trim();
-        setInput("");
-
-        // Add user message locally
-        const newUserMsg: Message = {
-            id: Date.now().toString(),
-            role: "user",
-            content: userMessage,
-            createdAt: new Date().toISOString()
-        };
-
-        setMessages(prev => [...prev, newUserMsg]);
+    const runTurn = async (turn: PendingTurn) => {
+        // Ref ownership closes the same-tick window before React disables Submit.
+        if (requestRef.current) return;
+        const request = new AbortController();
+        requestRef.current = request;
+        const isCurrent = () => requestRef.current === request;
         setIsLoading(true);
+        setError(null);
 
         try {
-            // Save user message to Firestore
-            await saveMessage(documentId, chatId, "user", userMessage);
+            if (!turn.userSaved) {
+                await saveMessage(documentId, chatId, "user", turn.user.content);
+                turn.userSaved = true;
+            }
+            request.signal.throwIfAborted();
 
-            // Call streaming API
-            const response = await fetch("/api/chat", {
-                method: "POST",
-                body: JSON.stringify({
-                    documentId,
-                    chatId,
-                    message: userMessage,
-                    history: messages.map(m => ({ role: m.role, parts: [{ text: m.content }] })),
-                    context
-                }),
-            });
+            if (turn.completedText === undefined) {
+                setIsStreaming(true);
+                setMessages(prev => prev.filter(m => m.id !== turn.assistantId));
+                const response = await fetch("/api/chat", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    signal: request.signal,
+                    body: JSON.stringify({
+                        documentId,
+                        chatId,
+                        message: turn.user.content,
+                        history: turn.history.map(m => ({ role: m.role, parts: [{ text: m.content }] })),
+                        context
+                    }),
+                });
 
-            if (!response.ok) throw new Error("Failed to get response");
-
-            const reader = response.body?.getReader();
-            const decoder = new TextDecoder();
-            let aiResponseContent = "";
-
-            // Initialize AI message
-            const aiMsgId = (Date.now() + 1).toString();
-            setMessages(prev => [...prev, {
-                id: aiMsgId,
-                role: "model",
-                content: "",
-                createdAt: new Date().toISOString()
-            }]);
-
-            while (true) {
-                const { done, value } = await reader!.read();
-                if (done) break;
-
-                const chunk = decoder.decode(value);
-                aiResponseContent += chunk;
-
-                setMessages(prev => prev.map(m =>
-                    m.id === aiMsgId ? { ...m, content: aiResponseContent } : m
-                ));
+                turn.completedText = await readTextStream(response, request.signal, text => {
+                    if (!isCurrent() || request.signal.aborted) return;
+                    setMessages(prev => {
+                        const reply: ChatMessage = {
+                            id: turn.assistantId,
+                            role: "model",
+                            content: text,
+                            createdAt: new Date().toISOString()
+                        };
+                        return prev.some(m => m.id === turn.assistantId)
+                            ? prev.map(m => m.id === turn.assistantId ? reply : m)
+                            : [...prev, reply];
+                    });
+                });
             }
 
-            // Save complete AI response
-            await saveMessage(documentId, chatId, "model", aiResponseContent);
-        } catch (error) {
-            console.error("Chat error:", error);
-            // Add error message?
+            request.signal.throwIfAborted();
+            if (isCurrent()) setIsStreaming(false);
+            // Only a fully received reply is persisted. A save retry reuses this text.
+            await saveMessage(documentId, chatId, "model", turn.completedText);
+            if (isCurrent() && !request.signal.aborted) {
+                excludedHistoryIds.current.delete(turn.user.id);
+                excludedHistoryIds.current.delete(turn.assistantId);
+                pendingTurnRef.current = null;
+            }
+        } catch {
+            if (!isCurrent()) return;
+            excludedHistoryIds.current.add(turn.user.id);
+            excludedHistoryIds.current.add(turn.assistantId);
+            setMessages(prev => prev.map(m => m.id === turn.assistantId
+                ? { ...m, incomplete: turn.completedText === undefined }
+                : m));
+            setError(turn.completedText !== undefined
+                ? "The reply is shown, but could not be saved. Retry to save it."
+                : request.signal.aborted
+                    ? "Response stopped. You can retry your question."
+                    : "We couldn't finish the response. Please retry your question.");
         } finally {
-            setIsLoading(false);
+            if (isCurrent()) {
+                requestRef.current = null;
+                setIsLoading(false);
+                setIsStreaming(false);
+            }
         }
+    };
+
+    const handleSend = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!input.trim() || requestRef.current || pendingTurnRef.current) return;
+        const turn: PendingTurn = {
+            user: {
+                id: crypto.randomUUID(),
+                role: "user",
+                content: input.trim(),
+                createdAt: new Date().toISOString()
+            },
+            assistantId: crypto.randomUUID(),
+            history: messages.filter(m => !excludedHistoryIds.current.has(m.id)),
+            userSaved: false
+        };
+        pendingTurnRef.current = turn;
+        setInput("");
+        setMessages(prev => [...prev, turn.user]);
+        void runTurn(turn);
     };
 
     return (
@@ -162,6 +215,7 @@ export function ChatInterface({
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8"
+                        aria-label={isMinimized ? "Expand chat" : "Minimize chat"}
                         onClick={() => setIsMinimized(!isMinimized)}
                     >
                         {isMinimized ? <Maximize2 className="h-4 w-4" /> : <Minimize2 className="h-4 w-4" />}
@@ -214,6 +268,9 @@ export function ChatInterface({
                                                     {m.content}
                                                 </ReactMarkdown>
                                             </div>
+                                            {m.incomplete && (
+                                                <p className="mt-2 text-xs text-muted-foreground">Incomplete response</p>
+                                            )}
                                             <CopyButton content={m.content} />
                                         </div>
 
@@ -235,6 +292,22 @@ export function ChatInterface({
                         </div>
                     </ScrollArea>
 
+                    {error && (
+                        <div className="px-4 py-3 border-t space-y-2">
+                            <p role="alert" className="text-sm text-destructive">{error}</p>
+                            <div className="flex gap-2">
+                                <Button type="button" size="sm" onClick={() => {
+                                    const turn = pendingTurnRef.current;
+                                    if (turn) void runTurn(turn);
+                                }}>Retry</Button>
+                                <Button type="button" size="sm" variant="outline" onClick={() => {
+                                    pendingTurnRef.current = null;
+                                    setError(null);
+                                }}>Ask a different question</Button>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Input */}
                     <form
                         onSubmit={handleSend}
@@ -243,20 +316,28 @@ export function ChatInterface({
                         <div className="relative group">
                             <input
                                 className="w-full bg-background border rounded-2xl py-3 pl-4 pr-12 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all placeholder:text-muted-foreground"
+                                aria-label="Ask a question"
                                 placeholder="Ask a question..."
                                 value={input}
                                 onChange={(e) => setInput(e.target.value)}
-                                disabled={isLoading}
+                                disabled={isLoading || !!error}
                             />
                             <Button
+                                aria-label="Send message"
                                 type="submit"
                                 size="icon"
                                 className="absolute right-1.5 top-1.5 h-8 w-8 rounded-xl bg-indigo-500 hover:bg-indigo-600 transition-colors shadow-lg shadow-indigo-500/20"
-                                disabled={!input.trim() || isLoading}
+                                disabled={!input.trim() || isLoading || !!error}
                             >
                                 <Send className="h-4 w-4" />
                             </Button>
                         </div>
+                        {isStreaming && (
+                            <Button type="button" variant="outline" size="sm" className="mt-2"
+                                onClick={() => requestRef.current?.abort()}>
+                                Stop response
+                            </Button>
+                        )}
                         <p className="text-[10px] text-center text-muted-foreground mt-2">
                             Gemini can make mistakes. Verify important info.
                         </p>

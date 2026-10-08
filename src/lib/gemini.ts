@@ -50,10 +50,9 @@ export async function analyzeDocument(content: string, type: string) {
     }
 }
 
-export async function* streamChat(history: Content[], message: string, context?: string) {
+export async function* streamChat(history: Content[], message: string, context?: string, signal?: AbortSignal) {
     if (!model) {
-        yield "Error: Gemini API not configured.";
-        return;
+        throw new Error("Gemini API not configured");
     }
 
     const chat = model.startChat({
@@ -67,15 +66,11 @@ export async function* streamChat(history: Content[], message: string, context?:
         ? `Context from document: ${context}\n\nUser Question: ${message}`
         : message;
 
-    try {
-        const result = await chat.sendMessageStream(prompt);
-        for await (const chunk of result.stream) {
-            const chunkText = chunk.text();
-            yield chunkText;
-        }
-    } catch (error) {
-        console.error("Gemini streaming error:", error);
-        yield "Error: Failed to get response from Gemini.";
+    signal?.throwIfAborted();
+    const result = await chat.sendMessageStream(prompt, { signal });
+    for await (const chunk of result.stream) {
+        signal?.throwIfAborted();
+        yield chunk.text();
     }
 }
 
