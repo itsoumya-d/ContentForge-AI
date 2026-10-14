@@ -15,6 +15,7 @@ import {
     SearchX
 } from "lucide-react";
 import { DocumentMetadata } from "@/lib/actions/documents";
+import { hasVerifiedDocumentAnalysis } from "@/lib/document-analysis";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 
@@ -28,7 +29,7 @@ export function DocumentListClient({ initialDocuments }: DocumentListProps) {
     const filteredDocuments = initialDocuments.filter(doc =>
         doc.name.toLowerCase().includes(search.toLowerCase()) ||
         doc.type.toLowerCase().includes(search.toLowerCase()) ||
-        (doc.tags && doc.tags.some(tag => tag.toLowerCase().includes(search.toLowerCase())))
+        (hasVerifiedDocumentAnalysis(doc) && doc.tags && doc.tags.some(tag => tag.toLowerCase().includes(search.toLowerCase())))
     );
 
     const recentDocuments = filteredDocuments.slice(0, 5);
@@ -94,7 +95,7 @@ export function DocumentListClient({ initialDocuments }: DocumentListProps) {
                                         </div>
                                     </div>
                                     <div className="hidden sm:flex items-center gap-2">
-                                        {doc.tags?.slice(0, 2).map((tag) => (
+                                        {hasVerifiedDocumentAnalysis(doc) && doc.tags?.slice(0, 2).map((tag) => (
                                             <Badge key={tag} variant="secondary" className="bg-muted text-[10px] font-medium">
                                                 #{tag}
                                             </Badge>
