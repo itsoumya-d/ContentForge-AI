@@ -12,42 +12,23 @@ if (API_KEY) {
 
 export { model };
 
-export async function analyzeDocument(content: string, type: string) {
-    if (!model) {
-        console.warn("Gemini API key missing, skipping analysis");
-        return {
-            summary: "Analysis skipped (API key missing).",
-            tags: [],
-        };
+export async function analyzeDocument(content: string, type: string): Promise<{ summary: string; tags: string[] }> {
+    if (!model) throw new Error("Gemini API not configured");
+    if (!content.trim()) throw new Error("Document content is empty");
+
+    const prompt = `Analyze the following document content (Type: ${type}).
+Provide a concise summary (max 3 sentences) and extract 3-5 key topics/tags.
+Return a JSON object with "summary" and "tags" keys.`;
+    // Provider failures must reject, not become a successful summary.
+    const result = await model.generateContent([prompt, content]);
+    const text = result.response.text().trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
+    const analysis: unknown = JSON.parse(text);
+    if (!analysis || typeof analysis !== "object" || !("summary" in analysis) || !("tags" in analysis)
+        || typeof analysis.summary !== "string" || !analysis.summary.trim()
+        || !Array.isArray(analysis.tags) || !analysis.tags.every((tag: unknown) => typeof tag === "string" && tag.trim())) {
+        throw new Error("Invalid document analysis response");
     }
-
-    const prompt = `
-    Analyze the following document content (Type: ${type}).
-    Provide a concise summary (max 3 sentences) and extract 3-5 key topics/tags.
-    Return the response as a JSON object with "summary" and "tags" keys.
-  `;
-
-    try {
-        const result = await model.generateContent([prompt, content]);
-        const response = await result.response;
-        const text = response.text();
-
-        const jsonMatch = text.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-            return JSON.parse(jsonMatch[0]);
-        }
-
-        return {
-            summary: text,
-            tags: [],
-        };
-    } catch (error) {
-        console.error("Gemini analysis error:", error);
-        return {
-            summary: "Failed to analyze document.",
-            tags: [],
-        };
-    }
+    return { summary: analysis.summary.trim(), tags: analysis.tags.map((tag: string) => tag.trim()) };
 }
 
 export async function* streamChat(history: Content[], message: string, context?: string, signal?: AbortSignal) {

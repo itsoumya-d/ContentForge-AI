@@ -11,14 +11,13 @@ import {
     Share2,
     Download,
     MoreVertical,
-    Bot,
     Loader2
 } from "lucide-react";
 import Link from "next/link";
 import { DocumentMetadata } from "@/lib/actions/documents";
 import { createChatSession, getChatHistory, Message } from "@/lib/actions/chat";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
+import { hasVerifiedDocumentAnalysis } from "@/lib/document-analysis";
 
 interface DocumentDetailProps {
     document: DocumentMetadata & { id: string };
@@ -26,11 +25,13 @@ interface DocumentDetailProps {
 }
 
 export default function DocumentDetail({ document, initialChatId }: DocumentDetailProps) {
+    const hasAnalysis = hasVerifiedDocumentAnalysis(document);
     const [chatId, setChatId] = useState<string | null>(initialChatId || null);
     const [messages, setMessages] = useState<Message[]>([]);
     const [isInitializing, setIsInitializing] = useState(!initialChatId);
 
     useEffect(() => {
+        if (!hasAnalysis) return;
         async function initChat() {
             if (!chatId) {
                 const id = await createChatSession(document.id);
@@ -42,7 +43,7 @@ export default function DocumentDetail({ document, initialChatId }: DocumentDeta
             setIsInitializing(false);
         }
         initChat();
-    }, [document.id, chatId]);
+    }, [document.id, chatId, hasAnalysis]);
 
     return (
         <div className="max-w-7xl mx-auto py-8 px-4 h-full flex flex-col gap-6">
@@ -95,11 +96,16 @@ export default function DocumentDetail({ document, initialChatId }: DocumentDeta
                             <h2 className="text-xl font-semibold">Document Summary</h2>
                         </div>
 
-                        {document.status === "processing" ? (
+                        {document.status === "processing" && document.analysisVersion === 1 ? (
                             <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
                                 <Loader2 className="h-10 w-10 animate-spin text-indigo-500" />
                                 <p className="text-muted-foreground italic">Analyzing content with Gemini...</p>
                             </div>
+                        ) : !hasAnalysis ? (
+                            <p role="status" className="text-muted-foreground">
+                                {document.status === "error" ? "Document analysis failed. " : "Document content has not been analyzed. "}
+                                Uploading currently stores the file only. Summaries and document chat are unavailable until content processing is implemented.
+                            </p>
                         ) : (
                             <div className="space-y-6">
                                 <p className="text-lg leading-relaxed text-foreground/90">
@@ -116,21 +122,6 @@ export default function DocumentDetail({ document, initialChatId }: DocumentDeta
                                     </div>
                                 )}
 
-                                <Separator />
-
-                                <div className="grid gap-4">
-                                    <h3 className="font-medium">Quick Insights</h3>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="p-4 rounded-xl border bg-muted/10 space-y-1">
-                                            <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Tone</p>
-                                            <p className="text-sm font-medium">Professional & Informative</p>
-                                        </div>
-                                        <div className="p-4 rounded-xl border bg-muted/10 space-y-1">
-                                            <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Sentiment</p>
-                                            <p className="text-sm font-medium">Positive</p>
-                                        </div>
-                                    </div>
-                                </div>
                             </div>
                         )}
                     </div>
@@ -138,7 +129,11 @@ export default function DocumentDetail({ document, initialChatId }: DocumentDeta
 
                 {/* Chat Interface */}
                 <div className="flex flex-col h-[600px] lg:h-full lg:sticky lg:top-8">
-                    {isInitializing || !chatId ? (
+                    {!hasAnalysis ? (
+                        <div role="status" className="p-8 border rounded-2xl text-muted-foreground">
+                            Document chat requires a verified content analysis. No filename-only or legacy summary will be used as context.
+                        </div>
+                    ) : isInitializing || !chatId ? (
                         <div className="flex flex-col items-center justify-center h-full border rounded-2xl bg-muted/10">
                             <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
                             <p className="text-xs text-muted-foreground mt-4">Initializing chat...</p>
