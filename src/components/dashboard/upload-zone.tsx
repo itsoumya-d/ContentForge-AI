@@ -250,10 +250,10 @@ export function UploadZone() {
                         {isUploading ? (
                             <>
                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Processing uploads...
+                                Uploading and registering...
                             </>
                         ) : (
-                            "Start analysis"
+                            "Upload files"
                         )}
                     </Button>
                 </div>

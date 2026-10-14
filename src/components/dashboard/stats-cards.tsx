@@ -9,6 +9,7 @@ import {
     Database
 } from "lucide-react";
 import { DocumentMetadata } from "@/lib/actions/documents";
+import { hasVerifiedDocumentAnalysis } from "@/lib/document-analysis";
 import { UserSubscription } from "@/lib/actions/user";
 
 interface StatsCardsProps {
@@ -22,8 +23,8 @@ export function StatsCards({ documents, subscription }: StatsCardsProps) {
     const sizeInMb = (totalSize / (1024 * 1024)).toFixed(2);
     const storageLimitMb = (subscription.storageLimit / (1024 * 1024)).toFixed(0);
 
-    // Mocks for now, will be connected in Phase 2/3
-    const transforms = documents.filter(d => d.summary).length;
+    // Only content-derived analyses with provenance count as transforms.
+    const transforms = documents.filter(hasVerifiedDocumentAnalysis).length;
 
     const stats = [
         {
