@@ -72,3 +72,19 @@ a failed write with an uncertain server outcome is not an exactly-once guarantee
 
 Stopping a response aborts the client-side SDK request. It does not guarantee
 that the model service stops processing or that provider usage charges stop.
+
+### Document analysis limitations
+
+File upload currently stores files and metadata only; it does not extract PDF,
+DOCX, or text content. New registrations are therefore `unprocessed`, not
+`completed`. The former filename-only analysis has been removed. Existing
+summaries without server-side content-analysis provenance are not displayed or
+used by the document detail chat, and hard-coded tone/sentiment insights have
+been removed. Upload success is not analysis success.
+
+A future extraction pipeline must obtain the actual authorized file content,
+await and validate analysis, then set `analysisVersion: 1` with `completed` only
+on success. Registration explicitly ignores caller-provided summaries, tags,
+status and provenance. Provider errors, missing configuration, malformed JSON,
+and empty analysis now fail explicitly rather than becoming summary text.
+These changes do not implement extraction or migrate legacy document records.

@@ -3,7 +3,6 @@
 import { revalidatePath } from "next/cache";
 import { adminDb } from "@/lib/firebase/admin";
 import { getSession } from "@/lib/firebase/server";
-import { analyzeDocument } from "@/lib/gemini";
 import { getUserSubscription } from "./user";
 
 export type DocumentMetadata = {
@@ -12,7 +11,9 @@ export type DocumentMetadata = {
     size: number;
     url: string;
     storagePath: string;
-    status: "processing" | "completed" | "error";
+    status: "unprocessed" | "processing" | "completed" | "error";
+    /** Set only by a future server-side content extraction/analysis pipeline. */
+    analysisVersion?: 1;
     createdAt: string;
     summary?: string;
     tags?: string[];
@@ -38,31 +39,18 @@ export async function registerDocument(metadata: Omit<DocumentMetadata, "created
     }
 
     const docRef = await db.collection("users").doc(userId).collection("documents").add({
-        ...metadata,
-        status: "processing",
+        name: metadata.name,
+        type: metadata.type,
+        size: metadata.size,
+        url: metadata.url,
+        storagePath: metadata.storagePath,
+        status: "unprocessed",
         createdAt: new Date().toISOString(),
     });
 
-    // Simple background-like trigger for analysis
-    // In a real app, this would be a background job
-    (async () => {
-        try {
-            // For now, we only analyze it if we have text content or just the name/type
-            // Real integration would fetch the file and send to Gemini
-            const analysis = await analyzeDocument(`Document: ${metadata.name}`, metadata.type);
-
-            await db.collection("users").doc(userId).collection("documents").doc(docRef.id).update({
-                status: "completed",
-                summary: analysis.summary,
-                tags: analysis.tags,
-            });
-        } catch (error) {
-            console.error("Delayed analysis error:", error);
-            await db.collection("users").doc(userId).collection("documents").doc(docRef.id).update({
-                status: "error",
-            });
-        }
-    })();
+    // Upload registration stores metadata only. No file content is extracted here.
+    // Never send a filename to the model or label that response as an analysis.
+    // Await a real content-processing pipeline before enabling document chat.
 
     revalidatePath("/dashboard");
 
