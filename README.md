@@ -88,3 +88,39 @@ on success. Registration explicitly ignores caller-provided summaries, tags,
 status and provenance. Provider errors, missing configuration, malformed JSON,
 and empty analysis now fail explicitly rather than becoming summary text.
 These changes do not implement extraction or migrate legacy document records.
+
+
+## Verify-and-Repair Quality Loop
+
+ContentForge-AI incorporates a closed verify-and-repair quality evaluation loop (`src/lib/verify.ts` and `src/lib/repair.ts`) governed by an evaluation rubric stored in `src/config/rubric.json`. Generated artifacts are scored against mechanical and non-mechanical standards from 0 to 100 with a passing threshold of 80.
+
+### Rubric Criteria
+
+| Check ID | Name | Weight | Mechanical | Threshold / Requirement |
+|---|---|---|---|---|
+| `thread_non_empty` | Twitter Thread Non-Empty | 25 | Yes | All tweets in thread must contain non-blank text. |
+| `whitespace_trimmed` | Whitespace Cleanliness | 25 | Yes | No untrimmed leading/trailing spaces or irregular gaps. |
+| `hashtag_formatting` | Hashtag Normalization | 25 | Yes | Hashtags must start with `#` without malformed prefixes. |
+| `factual_context_relevance` | Factual Context Relevance | 25 | No | Grounded alignment with source; deviations escalated to humans. |
+
+### Before & After Repair Example
+
+**Input (Score: 25 / 100 - Failed):**
+```json
+{
+  "twitter": ["  Initial finding overview   ", "", "Follow up tag:innovation  "],
+  "linkedin": "  Executive overview with hash_research and    irregular spacing. "
+}
+```
+
+**Repair Rounds & Ledger:**
+* Round 1: Identified mechanical faults: whitespace, empty thread item, malformed tags. Repaired leading/trailing whitespace and normalized tags (`#innovation`, `#research`). Score: 75 / 100.
+* Round 2: Filtered empty thread item. Re-evaluated against rubric: all mechanical checks pass. Score: 100 / 100.
+
+**Output (Score: 100 / 100 - Passed):**
+```json
+{
+  "twitter": ["Initial finding overview", "Follow up #innovation"],
+  "linkedin": "Executive overview with #research and irregular spacing."
+}
+```
