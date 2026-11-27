@@ -1,0 +1,34 @@
+{
+  "version": "1.0.0",
+  "minPassScore": 80,
+  "checks": [
+    {
+      "id": "thread_non_empty",
+      "name": "Twitter Thread Non-Empty",
+      "weight": 25,
+      "mechanical": true,
+      "description": "Each tweet in thread must be non-empty and non-blank."
+    },
+    {
+      "id": "whitespace_trimmed",
+      "name": "Whitespace Cleanliness",
+      "weight": 25,
+      "mechanical": true,
+      "description": "Content must not contain untrimmed leading or trailing whitespace."
+    },
+    {
+      "id": "hashtag_formatting",
+      "name": "Hashtag Normalization",
+      "weight": 25,
+      "mechanical": true,
+      "description": "Hashtags must be correctly prefixed with '#' and free of internal punctuation."
+    },
+    {
+      "id": "factual_context_relevance",
+      "name": "Factual Context Relevance",
+      "weight": 25,
+      "mechanical": false,
+      "description": "Content must be factually aligned with source text and avoid unsubstantiated claims."
+    }
+  ]
+}
