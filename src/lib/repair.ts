@@ -22,7 +22,7 @@ export function repairContent(
   initialContent: ContentPayload,
   maxRounds: number = 3
 ): RepairResult {
-  let currentContent: ContentPayload = JSON.parse(JSON.stringify(initialContent));
+  const currentContent: ContentPayload = JSON.parse(JSON.stringify(initialContent));
   const ledger: LedgerEntry[] = [];
   const escalatedFaults: string[] = [];
   let finalResult: VerificationResult = verifyContent(currentContent);
